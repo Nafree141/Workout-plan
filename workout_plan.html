@@ -648,12 +648,12 @@ window._bootLocalMode = function() {
 };
 
 window._firebaseConfig = {
-  apiKey: "PASTE_YOUR_API_KEY_HERE",
-  authDomain: "PASTE_YOUR_AUTH_DOMAIN_HERE",
-  projectId: "PASTE_YOUR_PROJECT_ID_HERE",
-  storageBucket: "PASTE_YOUR_STORAGE_BUCKET_HERE",
-  messagingSenderId: "PASTE_YOUR_MESSAGING_SENDER_ID_HERE",
-  appId: "PASTE_YOUR_APP_ID_HERE"
+  apiKey: "AIzaSyAWq8CP4lJB3Ol_C1L_AuePwobKkv5obHs",
+  authDomain: "workout-plan-85d9b.firebaseapp.com",
+  projectId: "workout-plan-85d9b",
+  storageBucket: "workout-plan-85d9b.firebasestorage.app",
+  messagingSenderId: "852057943557",
+  appId: "1:852057943557:web:487d1b83c9823e0734366c"
 };
 
 window._firebaseConfigured = !Object.values(window._firebaseConfig).some(v => v.startsWith('PASTE_'));
@@ -662,6 +662,8 @@ window._firebaseConfigured = !Object.values(window._firebaseConfig).some(v => v.
 <script type="module">
 async function bootFirebase() {
   const cfg = window._firebaseConfig;
+  const ALLOWED_EMAIL = "ahmei248.206@gmail.com"; // e.g. "yourname@gmail.com"
+
   const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
   const { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
   const { getFirestore, doc, getDoc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
@@ -691,6 +693,13 @@ async function bootFirebase() {
     const authScreen = document.getElementById('auth-screen');
     const appDiv = document.querySelector('.app');
     if (user) {
+      // Block anyone who isn't the allowed email
+      if (user.email.toLowerCase() !== ALLOWED_EMAIL.toLowerCase()) {
+        await signOut(auth);
+        const err = document.getElementById('auth-error');
+        if (err) { err.textContent = 'This app is private. Access is not permitted for this account.'; err.style.display = 'block'; }
+        return;
+      }
       currentUser = user;
       authScreen.style.display = 'none';
       appDiv.style.display = 'block';
