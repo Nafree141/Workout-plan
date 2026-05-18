@@ -606,58 +606,67 @@
   </div>
 </div>
 
-<script type="module">
-const firebaseConfig = {
-  apiKey: "AIzaSyAWq8CP4lJB3Ol_C1L_AuePwobKkv5obHs",
-  authDomain: "workout-plan-85d9b.firebaseapp.com",
-  projectId: "workout-plan-85d9b",
-  storageBucket: "workout-plan-85d9b.firebasestorage.app",
-  messagingSenderId: "852057943557",
-  appId: "1:852057943557:web:487d1b83c9823e0734366c"
+<script>
+// Boot controller — runs after ALL scripts have loaded
+window._bootLocalMode = function() {
+  try {
+    document.getElementById('auth-screen').style.display = 'none';
+    document.querySelector('.app').style.display = 'block';
+
+    const KEYS = { sessions: 'mgp_sessions', weight: 'mgp_weight', goals: 'mgp_goals' };
+
+    window.saveData = function() {
+      try {
+        localStorage.setItem(KEYS.sessions, JSON.stringify(sessions));
+        localStorage.setItem(KEYS.weight, JSON.stringify(weightEntries));
+        localStorage.setItem(KEYS.goals, JSON.stringify(goals));
+      } catch(e) { console.warn('Save error', e); }
+    };
+
+    try {
+      const s = localStorage.getItem(KEYS.sessions); if (s) sessions = JSON.parse(s);
+      const w = localStorage.getItem(KEYS.weight);   if (w) weightEntries = JSON.parse(w);
+      const g = localStorage.getItem(KEYS.goals);    if (g) goals = JSON.parse(g);
+    } catch(e) { console.warn('Load error', e); }
+
+    const userBar = document.getElementById('user-bar');
+    if (userBar) userBar.innerHTML = `<span style="font-size:12px;color:var(--text4);">Local mode — <a href="#" onclick="alert('Add Firebase config to enable cross-device sync.');return false;" style="color:var(--text3);">enable sync</a></span>`;
+
+    populateExercises();
+    renderSessions();
+    renderWeightLog();
+    renderChart();
+    renderOverview();
+    renderGoalsPage();
+    applyDarkMode();
+  } catch(e) {
+    console.error('Boot error:', e);
+    // Last resort — just show the app
+    document.getElementById('auth-screen').style.display = 'none';
+    document.querySelector('.app').style.display = 'block';
+  }
 };
 
-const FIREBASE_CONFIGURED = !Object.values(firebaseConfig).some(v => v.startsWith('PASTE_'));
+window._firebaseConfig = {
+  apiKey: "PASTE_YOUR_API_KEY_HERE",
+  authDomain: "PASTE_YOUR_AUTH_DOMAIN_HERE",
+  projectId: "PASTE_YOUR_PROJECT_ID_HERE",
+  storageBucket: "PASTE_YOUR_STORAGE_BUCKET_HERE",
+  messagingSenderId: "PASTE_YOUR_MESSAGING_SENDER_ID_HERE",
+  appId: "PASTE_YOUR_APP_ID_HERE"
+};
 
-function bootLocalMode() {
-  // Hide auth screen, show app immediately using localStorage
-  document.getElementById('auth-screen').style.display = 'none';
-  const appDiv = document.querySelector('.app');
-  appDiv.style.display = 'block';
+window._firebaseConfigured = !Object.values(window._firebaseConfig).some(v => v.startsWith('PASTE_'));
+</script>
 
-  const KEYS = { sessions: 'mgp_sessions', weight: 'mgp_weight', goals: 'mgp_goals' };
-
-  window.saveData = function() {
-    try {
-      localStorage.setItem(KEYS.sessions, JSON.stringify(sessions));
-      localStorage.setItem(KEYS.weight, JSON.stringify(weightEntries));
-      localStorage.setItem(KEYS.goals, JSON.stringify(goals));
-    } catch(e) { console.warn('Save error', e); }
-  };
-
-  try {
-    const s = localStorage.getItem(KEYS.sessions); if (s) sessions = JSON.parse(s);
-    const w = localStorage.getItem(KEYS.weight);   if (w) weightEntries = JSON.parse(w);
-    const g = localStorage.getItem(KEYS.goals);    if (g) goals = JSON.parse(g);
-  } catch(e) { console.warn('Load error', e); }
-
-  const userBar = document.getElementById('user-bar');
-  if (userBar) userBar.innerHTML = `<span style="font-size:12px;color:var(--text4);">Local mode — <a href="#" onclick="alert('Follow the Firebase setup guide to enable cross-device sync.');return false;" style="color:var(--text3);">enable sync</a></span>`;
-
-  populateExercises();
-  renderSessions();
-  renderWeightLog();
-  renderChart();
-  renderOverview();
-  renderGoalsPage();
-  applyDarkMode();
-}
-
-async function bootFirebaseMode() {
+<script type="module">
+async function bootFirebase() {
+  const cfg = window._firebaseConfig;
   const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
   const { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
   const { getFirestore, doc, getDoc, setDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
 
-  const app = initializeApp(firebaseConfig);
+  const app = initializeApp(cfg);
   const auth = getAuth(app);
   const db = getFirestore(app);
   const provider = new GoogleAuthProvider();
@@ -667,18 +676,14 @@ async function bootFirebaseMode() {
     try { await signInWithPopup(auth, provider); }
     catch(e) {
       const err = document.getElementById('auth-error');
-      err.textContent = 'Sign-in failed: ' + e.message;
-      err.style.display = 'block';
+      if (err) { err.textContent = 'Sign-in failed: ' + e.message; err.style.display = 'block'; }
     }
   };
-
   window.signOutUser = async function() { await signOut(auth); };
-
   window.saveData = async function() {
     if (!currentUser) return;
     try {
-      const ref = doc(db, 'users', currentUser.uid);
-      await setDoc(ref, { sessions, weightEntries, goals }, { merge: true });
+      await setDoc(doc(db, 'users', currentUser.uid), { sessions, weightEntries, goals }, { merge: true });
     } catch(e) { console.warn('Save error', e); }
   };
 
@@ -698,13 +703,8 @@ async function bootFirebaseMode() {
           if (d.goals) goals = d.goals;
         }
       } catch(e) { console.warn('Load error', e); }
-      populateExercises();
-      renderSessions();
-      renderWeightLog();
-      renderChart();
-      renderOverview();
-      renderGoalsPage();
-      applyDarkMode();
+      populateExercises(); renderSessions(); renderWeightLog();
+      renderChart(); renderOverview(); renderGoalsPage(); applyDarkMode();
       const userBar = document.getElementById('user-bar');
       if (userBar) userBar.innerHTML = `<span style="font-size:13px;color:var(--text3);">Signed in as ${user.email}</span> <button onclick="signOutUser()" style="font-size:12px;padding:3px 10px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);color:var(--text);cursor:pointer;font-family:inherit;margin-left:8px;">Sign out</button>`;
     } else {
@@ -716,10 +716,11 @@ async function bootFirebaseMode() {
   });
 }
 
-if (FIREBASE_CONFIGURED) {
-  bootFirebaseMode().catch(e => { console.error('Firebase boot failed, falling back to local mode', e); bootLocalMode(); });
+if (window._firebaseConfigured) {
+  bootFirebase().catch(e => { console.error('Firebase failed, using local mode:', e); window._bootLocalMode(); });
 } else {
-  bootLocalMode();
+  // Wait for all other scripts to finish loading before booting
+  window.addEventListener('load', () => window._bootLocalMode());
 }
 </script>
 
